@@ -1,111 +1,66 @@
 <?php
 
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ExpenseCategoryController;
-use App\Http\Controllers\ExpenseController;
-use App\Http\Controllers\IncomeCategoryController;
-use App\Http\Controllers\IncomeController;
-use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\EventCategoryController;
+use App\Http\Controllers\EventController;
+use App\Http\Controllers\ReservationController;
+use App\Models\Event;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "web" middleware group. Make something great!
-|
- */
+Route::get( '/', function () {
+    $events = Event::with( 'event_category' )->latest()->paginate( 5 );
+    return view( 'frontend.index', compact( 'events' ) );
+} )->name( 'home.page' );
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get( '/event/{id}', function ( Request $request ) {
+    $event = Event::where( 'id', $request->id )->with( ['event_category', 'reservation'] )->first();
+    return view( 'frontend.event_details', compact( 'event' ) );
+} )->name( 'event' );
 
-// Route::get('/dashboard', function () {
-//     return view('dashboard');
-// })->middleware(['auth', 'verified'])->name('dashboard');
+Route::get( '/dashboard', [DashboardController::class, 'dashboardMethod'] )->middleware( ['auth', 'verified'] )->name( 'dashboard' );
 
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
+Route::middleware( ['auth'] )->group( function () {
 
-// AJAX API
+    //Admin Controller
+    Route::controller( AdminController::class )->group( function () {
+        Route::get( '/admin/logout', 'destroy' )->name( 'admin.logout' );
+        Route::get( '/admin/profile', 'Profile' )->name( 'admin.profile' );
+        Route::get( '/edit/profile', 'editProfile' )->name( 'edit.profile' );
+        Route::post( '/update/profile', 'updateProfile' )->name( 'update.profile' );
+        Route::get( '/change/password', 'changePassword' )->name( 'change.password' );
+        Route::post( '/change/password', 'updatePassword' )->name( 'update.password' );
+    } );
 
-Route::middleware('auth')->group(function () {
-    // Income Category
-    Route::get('/income-cat-list', [IncomeCategoryController::class, 'incomeCategoryList'])
-        ->name('income-cat-list');
+    //Event Event all route
+    Route::controller( EventCategoryController::class )->group( function () {
+        Route::get( '/all/category', 'allEventCategory' )->name( 'all.category' );
+        Route::get( '/add/category', 'addEventCategory' )->name( 'add.category' );
+        Route::post( '/add/category', 'storeEventCategory' )->name( 'store.category' );
+        Route::get( '/edit/category/{id}', 'editEventCategory' )->name( 'edit.category' );
+        Route::patch( '/edit/category/{id}', 'updateEventCategory' )->name( 'update.category' );
+        Route::get( '/delete/category/{id}', 'deleteEventCategory' )->name( 'delete.category' );
+    } );
 
-    Route::post('/create-income-cat', [IncomeCategoryController::class, 'incomeCategoryCreate'])
-        ->name(('income-cat-create'));
+    //Event all route
+    Route::controller( EventController::class )->group( function () {
+        Route::get( '/all/event', 'allEvent' )->name( 'all.event' );
+        Route::get( '/add/event', 'addEvent' )->name( 'add.event' );
+        Route::post( '/add/event', 'storeEvent' )->name( 'store.event' );
+        Route::get( '/edit/event/{id}', 'editEvent' )->name( 'edit.event' );
+        Route::patch( '/edit/event/{id}', 'updateEvent' )->name( 'update.event' );
+        Route::get( '/delete/event/{id}', 'deleteEvent' )->name( 'delete.event' );
+        Route::get( '/event/details/{id}', 'EventDetails' )->name( 'event.details' )->withoutMiddleware( 'auth' );
+        Route::get( '/category/events/{id}', 'categoryEvents' )->name( 'category.events' )->withoutMiddleware( 'auth' );
+        Route::get( '/events', 'eventPage' )->name( 'event.page' )->withoutMiddleware( 'auth' );
+    } );
 
-    Route::post('/update-income-cat', [IncomeCategoryController::class, 'incomeCategoryUpdate'])
-        ->name(('income-cat-update'));
+} );
 
-    Route::post('/delete-income-cat', [IncomeCategoryController::class, 'incomeCategoryDelete'])
-        ->name(('income-cat-delete'));
-
-    // Expense Category
-
-    Route::get('/expense-cat-list', [ExpenseCategoryController::class, 'expenseCategoryList'])
-        ->name('income-cat-list');
-
-    Route::post('/create-expense-cat', [ExpenseCategoryController::class, 'expenseCategoryCreate'])
-        ->name(('expense-cat-create'));
-
-    Route::post('/update-expense-cat', [ExpenseCategoryController::class, 'expenseCategoryUpdate'])
-        ->name(('expense-cat-update'));
-
-    Route::post('/delete-expense-cat', [ExpenseCategoryController::class, 'expenseCategoryDelete'])
-        ->name(('expense-cat-delete'));
-
-    // Income Page
-    Route::get('/income-list', [IncomeController::class, 'IncomeList'])
-        ->name('income-list');
-
-    Route::post('/create-income', [IncomeController::class, 'createIncome'])
-        ->name(('income-create'));
-
-    Route::post("/update-income-by-id", [IncomeController::class, 'IncomeById']);
-
-    Route::post('/update-income', [IncomeController::class, 'updateIncome'])
-        ->name(('income-update'));
-
-    Route::post('/delete-income', [IncomeController::class, 'deleteIncome'])
-        ->name('deleteIncome');
-
-    // Expense Page
-    Route::get('/expense-list', [ExpenseController::class, 'ExpenseList'])
-        ->name('expense-list');
-
-    Route::post('/create-expense', [ExpenseController::class, 'createExpense'])
-        ->name(('expense-create'));
-    Route::post("/update-expense-by-id", [ExpenseController::class, 'ExpenseById']);
-    Route::post('/update-expense', [ExpenseController::class, 'updateExpense'])
-        ->name(('expense-update'));
-
-    Route::post('/delete-expense', [ExpenseController::class, 'deleteExpense'])
-        ->name('deleteExpense');
-});
-
-Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'DashboardPage']);
-
-    // Route::get('/categoryPage', [CategoryController::class, 'CategoryPage']);
-
-    Route::get('/income', [IncomeController::class, 'index']);
-    Route::get('/expense', [ExpenseController::class, 'index']);
-
-    Route::get('/income/category', [IncomeCategoryController::class, 'index']);
-    Route::get('/expense/category', [ExpenseCategoryController::class, 'index']);
-
-});
-
-// Route::get('/dashboard', [DashboardController::class, 'DashboardPage'])
-//     ->middleware(['auth', 'verified'])->name('dashboard');
+//Contact all route
+Route::controller( ReservationController::class )->group( function () {
+    Route::post( '/reservation', 'reservation' )->name( 'reservation' );
+} );
 
 require __DIR__ . '/auth.php';
